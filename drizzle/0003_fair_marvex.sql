@@ -1,0 +1,1 @@
+ALTER TABLE `homepage_sections` ADD `heading` varchar(160) DEFAULT '' NOT NULL;
