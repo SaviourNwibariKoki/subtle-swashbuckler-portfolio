@@ -5,8 +5,11 @@
 # Build outputs
 dist/
 build/
-public/
+/public/
 *.dist
+client/public/*
+!client/public/assets/
+!client/public/assets/**
 
 # Environment variables
 .env
