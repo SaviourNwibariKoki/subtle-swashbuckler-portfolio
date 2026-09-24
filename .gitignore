@@ -10,6 +10,8 @@ build/
 client/public/*
 !client/public/assets/
 !client/public/assets/**
+!client/public/robots.txt
+!client/public/sitemap.xml
 
 # Environment variables
 .env

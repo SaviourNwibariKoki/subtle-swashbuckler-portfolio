@@ -2,6 +2,7 @@ const PERSON_NAME = "Saviour Nwibari Koki";
 const BRAND_NAME = "Subtle Swashbuckler";
 const PERSON_DESCRIPTION =
   "Portfolio of Saviour Nwibari Koki, a frontend developer and GIS analyst focused on responsive web interfaces, spatial analysis, and data visualization.";
+const PRODUCTION_ORIGIN = "https://subtleswashbuckler.me";
 const PROFILE_IMAGE_PATH = "/assets/profile-frame.png";
 const PROFILE_IMAGE_WIDTH = 944;
 const PROFILE_IMAGE_HEIGHT = 1665;
@@ -13,6 +14,7 @@ const SOCIAL_LINKS = [
 const STRUCTURED_DATA_ID = "portfolio-structured-data";
 
 function getOrigin() {
+  if (import.meta.env.PROD) return PRODUCTION_ORIGIN;
   return window.location.origin.replace(/\/+$/, "");
 }
 

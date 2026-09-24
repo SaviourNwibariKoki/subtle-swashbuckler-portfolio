@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/
+Disallow: /__manus__/
+
+Sitemap: https://subtleswashbuckler.me/sitemap.xml
