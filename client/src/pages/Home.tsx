@@ -120,15 +120,35 @@ function sectionHeading(
   );
 }
 
+const MY_EMAIL_ADDRESS = "saviourbarry46@gmail.com";
+const MY_EMAIL_MAILTO_URL = `mailto:${MY_EMAIL_ADDRESS}`;
+const EMPTY_CONTACT_FORM = {
+  from_name: "",
+  from_email: "",
+  subject: "",
+  message: "",
+  website: "",
+};
+
+type EmailFallbackState = {
+  gmail: string;
+  outlook: string;
+  yahoo: string;
+  mailto: string;
+  copyText: string;
+};
+
 function ContactForm({ prefilledService }: { prefilledService: string }) {
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    service: "",
-    message: "",
-  });
-  const [status, setStatus] = useState<{
+  const [form, setForm] = useState(EMPTY_CONTACT_FORM);
+  const [emailFallback, setEmailFallback] = useState<EmailFallbackState | null>(
+    null
+  );
+  const [copyConfirmation, setCopyConfirmation] = useState<{
     type: "success" | "error";
+    text: string;
+  } | null>(null);
+  const [status, setStatus] = useState<{
+    type: "info" | "error";
     text: string;
   } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -137,7 +157,7 @@ function ContactForm({ prefilledService }: { prefilledService: string }) {
     if (prefilledService) {
       setForm(prev => ({
         ...prev,
-        service: prefilledService,
+        subject: prev.subject || prefilledService,
         message: prev.message
           ? prev.message
           : `Hi Saviour, I would like to inquire about ${prefilledService}.`,
@@ -147,30 +167,96 @@ function ContactForm({ prefilledService }: { prefilledService: string }) {
 
   function submitForm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
+    setEmailFallback(null);
+    setCopyConfirmation(null);
+    if (isSubmitting) return;
+
+    if (
+      !form.from_name.trim() ||
+      !form.from_email.trim() ||
+      !form.subject.trim() ||
+      !form.message.trim()
+    ) {
       setStatus({
         type: "error",
         text: "Please fill in all required fields before sending.",
       });
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.from_email)) {
       setStatus({
         type: "error",
         text: "Please provide a valid email address.",
       });
       return;
     }
-
-    setIsSubmitting(true);
-    setTimeout(() => {
+    if (form.website.trim()) {
       setStatus({
-        type: "success",
-        text: "Thank you for reaching out! Your message has been recorded.",
+        type: "error",
+        text: "We could not send your message. Please try again.",
       });
-      setForm({ name: "", email: "", service: "", message: "" });
+      return;
+    }
+
+    const subject = form.subject;
+    const mailtoBody = `From: ${form.from_name} <${form.from_email}>\n\n${form.message}`;
+    const encodedRecipient = encodeURIComponent(MY_EMAIL_ADDRESS);
+    const encodedSubject = encodeURIComponent(subject);
+    const encodedBody = encodeURIComponent(mailtoBody);
+    const generatedEmailFallback: EmailFallbackState = {
+      gmail: `https://mail.google.com/mail/?view=cm&fs=1&to=${encodedRecipient}&su=${encodedSubject}&body=${encodedBody}`,
+      outlook: `https://outlook.office.com/mail/deeplink/compose?to=${encodedRecipient}&subject=${encodedSubject}&body=${encodedBody}`,
+      yahoo: `https://compose.mail.yahoo.com/?to=${encodedRecipient}&subject=${encodedSubject}&body=${encodedBody}`,
+      mailto: `${MY_EMAIL_MAILTO_URL}?subject=${encodedSubject}&body=${encodedBody}`,
+      copyText: [
+        `To: ${MY_EMAIL_ADDRESS}`,
+        `Subject: ${subject}`,
+        "",
+        form.message,
+      ].join("\n"),
+    };
+
+    setEmailFallback(generatedEmailFallback);
+    setStatus(null);
+    setIsSubmitting(true);
+
+    try {
+      const link = document.createElement("a");
+      link.href = generatedEmailFallback.mailto;
+      link.target = "_self";
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setStatus({
+        type: "info",
+        text: "Choose your email service to finish sending the message.",
+      });
+    } catch {
+      setStatus({
+        type: "error",
+        text: "The default email app could not be opened. Choose an email service below.",
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 650);
+    }
+  }
+
+  async function copyMessage() {
+    if (!emailFallback) return;
+
+    try {
+      await navigator.clipboard.writeText(emailFallback.copyText);
+      setCopyConfirmation({
+        type: "success",
+        text: "Message copied to clipboard.",
+      });
+    } catch {
+      setCopyConfirmation({
+        type: "error",
+        text: "We could not copy the message. Please use an email service link.",
+      });
+    }
   }
 
   return (
@@ -181,33 +267,57 @@ function ContactForm({ prefilledService }: { prefilledService: string }) {
       transition={{ duration: 0.5 }}
       className="contact-form-card"
     >
-      <form className="contact-form" onSubmit={submitForm} noValidate>
+      <form
+        className="contact-form"
+        onSubmit={submitForm}
+        noValidate
+      >
         <div className="form-group">
-          <label htmlFor="name" className="form-label">
+          <label htmlFor="from_name" className="form-label">
             Your Name
           </label>
           <input
-            id="name"
-            name="name"
+            id="from_name"
+            name="from_name"
             placeholder="e.g. Alex Morgan"
             className="form-input-well"
-            value={form.name}
-            onChange={event => setForm({ ...form, name: event.target.value })}
+            value={form.from_name}
+            onChange={event =>
+              setForm({ ...form, from_name: event.target.value })
+            }
             required
           />
         </div>
         <div className="form-group">
-          <label htmlFor="email" className="form-label">
+          <label htmlFor="from_email" className="form-label">
             Email Address
           </label>
           <input
-            id="email"
-            name="email"
+            id="from_email"
+            name="from_email"
             type="email"
             placeholder="e.g. alex@example.com"
             className="form-input-well"
-            value={form.email}
-            onChange={event => setForm({ ...form, email: event.target.value })}
+            value={form.from_email}
+            onChange={event =>
+              setForm({ ...form, from_email: event.target.value })
+            }
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="subject" className="form-label">
+            Subject
+          </label>
+          <input
+            id="subject"
+            name="subject"
+            placeholder="What can I help you with?"
+            className="form-input-well"
+            value={form.subject}
+            onChange={event =>
+              setForm({ ...form, subject: event.target.value })
+            }
             required
           />
         </div>
@@ -228,6 +338,19 @@ function ContactForm({ prefilledService }: { prefilledService: string }) {
             required
           />
         </div>
+        <div className="form-honeypot" aria-hidden="true">
+          <label htmlFor="website">Website</label>
+          <input
+            id="website"
+            name="website"
+            tabIndex={-1}
+            autoComplete="off"
+            value={form.website}
+            onChange={event =>
+              setForm({ ...form, website: event.target.value })
+            }
+          />
+        </div>
         <button
           type="submit"
           disabled={isSubmitting}
@@ -243,13 +366,74 @@ function ContactForm({ prefilledService }: { prefilledService: string }) {
           )}
         </button>
         {status && (
-          <p
-            className={`form-status ${status.type}`}
-            role="status"
-            aria-live="polite"
-          >
-            {status.text}
-          </p>
+          <>
+            <p
+              className={`form-status ${status.type === "error" ? "error" : "success"}`}
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {status.text}
+            </p>
+            {emailFallback && (
+              <div
+                className="form-group"
+                role="group"
+                aria-labelledby="email-fallback-title"
+              >
+                <p id="email-fallback-title" className="form-label">
+                  EMAIL SERVICE OPTIONS
+                </p>
+                <a
+                  className="btn btn-secondary btn-full"
+                  href={emailFallback.gmail}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Open Gmail to send your message
+                </a>
+                <a
+                  className="btn btn-secondary btn-full"
+                  href={emailFallback.outlook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Open Outlook to send your message
+                </a>
+                <a
+                  className="btn btn-secondary btn-full"
+                  href={emailFallback.yahoo}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Open Yahoo Mail to send your message
+                </a>
+                <a
+                  className="btn btn-secondary btn-full"
+                  href={emailFallback.mailto}
+                >
+                  Use your default email app
+                </a>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-full"
+                  onClick={copyMessage}
+                >
+                  Copy message
+                </button>
+                {copyConfirmation && (
+                  <p
+                    className={`form-status ${copyConfirmation.type}`}
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                  >
+                    {copyConfirmation.text}
+                  </p>
+                )}
+              </div>
+            )}
+          </>
         )}
       </form>
     </motion.div>
@@ -849,7 +1033,7 @@ function PortfolioPage({ portfolio }: { portfolio: PortfolioSnapshot }) {
                   </a>
                 </li>
                 <li className="footer-link-item">
-                  <a href={`mailto:${profile.socialLinks.email}`}>
+                  <a href={MY_EMAIL_MAILTO_URL}>
                     <ArrowRight className="w-3.5 h-3.5" />
                     <span>{profile.socialLinks.email}</span>
                   </a>
