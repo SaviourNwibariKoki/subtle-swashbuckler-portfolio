@@ -119,3 +119,12 @@ dist/
 .env.*
 !.env.example
 .manus-logs/
+
+.env.local
+.env.*
+!.env.example
+
+.env.local
+client/.env.local
+.env.*
+!.env.example
